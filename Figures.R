@@ -247,16 +247,19 @@ fs1c <- DoHeatmap(object = c0, features = top20$gene,
   theme(axis.text = element_text(face='italic', color = 'black', size = 6))
 
 #Fig. 1C Scores and cluster annotation####
+#Fig. 1C Scores and cluster annotation####
 ident.scores <- list("Complement & Phagocytosis" = c('C1qc','F13a1','C1qa','C4b','Cfh','C5ar1',
                                                      'Snx2','Tgfbr2','Dab2','Folr2','Cltc','Wwp1',
                                                      'Cd209d','Mrc1','Cd209f','Cd209g','Cd36',
                                                      'Ctsb','Lgmn','Cltc','Cd63'),
                      'ECM & actin regulation' = c('Cd44','Sdc1','Fn1',
                                                   'Pfn1','Fn1','Actg1','Tmsb4x'),
-                     "Antigen presentation" = c('H2-Ab1','H2-Aa','H2-Eb1'),
-                     "Antigen processing & presentation" =  c('H2-Oa','H2-Ab1','H2-DMb2',
-                                                              'H2-Aa','H2-Eb1','H2-Ob',
-                                                              'Cd74','Klrd1','H2-DMb1'),
+                     "Antigen presentation" = c('H2-Ab1','H2-Aa','H2-Eb1',
+                                                'H2-Oa','H2-DMb2','H2-Ob','H2-DMb1'),
+                     "Innate Immune Response" =  c('Tnfaip8l2','Cyba','Rsad2','Anxa1','Ifitm3',
+                                                   'Fcgr1','Fgr','Oasl2','Clec4e','Clec4d',
+                                                   'Pglyrp1','Oas3','Isg20','Samhd1',
+                                                   'Hmgb2','Rnase6','Slpi','Msrb1','Gbp2'),
                      "Phagosome" = c('Ctss','Cyba','Msr1',
                                      'Fcgr1','Coro1a','Thbs1',
                                      'Ncf4','Fcgr3'),
@@ -334,6 +337,35 @@ f1d <- DimPlot(object = c0, reduction = "umap",
             color = 'black', size = 0.5) +
   geom_path(data = p4, aes(x = x, y = y),
             color = 'black', size = 0.5)
+
+genes <- c("S100a4","Itgb7","Napsa","Cd300lg","Adora2b","Elane",
+           "Emb","Ly6c2","Ms4a4c","Fn1","Sell","Padi2","Klrb1f","Lilra6","Ccnb2","Galnt9",
+           "Upb1","Hpse","Lmo1","F13a1","Ctsg","Ccr2",
+           "Kcnk12","Btla","Gpr141","Prtn3","Gm15987",
+           "Ly6a2","AI839979")
+genes <- genes[genes %in% rownames(c0)]
+write.table(t(genes),"Monocyte.genes.noquote",sep=", ",quote=FALSE,
+            row.names = F, col.names = F)
+
+c0 <- AddModuleScore(object = c0, features = list(genes),
+                     assay = 'integrated',
+                     name = 'monocyte')
+
+f1d2 <- FeaturePlot(object = c0,
+                   features = 'monocyte1',
+                   reduction = "umap",
+                   min.cutoff = 'q40', max.cutoff = 'q80',
+                   pt.size = 0.01, combine =F)[[1]] +
+  theme(axis.title=element_blank(),
+        axis.text=element_blank(),
+        axis.ticks=element_blank(),
+        axis.line = element_blank(),
+        plot.title = element_text(face = 'plain', size = 10),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank())+
+  NoLegend() +
+  labs(title = 'Monocyte signature')
 
 #Fig. 1E - plotting paths####
 f1e <- FeaturePlot(object = c0, features = c('Path_1','Path_2',
@@ -677,17 +709,38 @@ genes <- c('Acin1','Acvr1c','Aifm1','Aifm3','Akt1',
            'Xkr4','Xkr5','Xkr6','Xkr7','Xkr8','Xkr9','Zc3h12a')
 
 genes <- genes[genes %in% rownames(c0)]
-genes <- genes[genes %in% names(pval$Path_2)]
+genes <- genes[genes %in% names(pval$Path_2)][c(3,5,6,8,11,12)]
 cells <- rownames(c0@meta.data[!is.na(c0$Path_2),])
-df <- FetchData(object = c0, cells = cells, vars = genes)
-o <- hclust(dist(t(df)))
-genes <- genes[o$order][c(2:6,11:12)]
-f2d[[2]] <- DoHeatmap(object = c0, features = genes, raster = F,
-                      cells = cells, group.by = "L2_bin", group.bar = T,
-                      group.colors = col.pst2, label = F, draw.lines = F) +
-  NoLegend() +
-  scale_fill_gradientn(colors = c("darkblue", "white", "darkorange")) +
-  theme(axis.text = element_text(face='italic', color = 'black', size = 6))
+t <- FetchData(object = c0, cells = cells, vars = c('Path_2',genes))
+t <- t[order(t[,1],decreasing = F),] #only counts for regulated genes
+t <- melt(t, id.vars = 'Path_2')
+colnames(t) <- c('X','Gene','Y')
+
+f2d[[2]] <- ggplot(data = t, aes(x = X, y = Y,
+                            group = Gene)) +
+  theme(axis.text = element_blank(),
+        strip.background = element_blank(),
+        strip.placement = 'inside',
+        strip.text = element_text(size = 8,
+                                  face = 'italic'),
+        legend.position = 'none',
+        axis.title.x = element_text(size = 8,
+                                    face = 'plain'),
+        axis.title.y = element_text(size = 8,
+                                    face = 'plain'),
+        axis.line = element_line(),
+        axis.ticks = element_blank(),
+        legend.key = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.background = element_blank()) +
+  geom_smooth(method = gam::gam, se = F,
+              color = col.paths[[2]],
+              formula = y ~ lo(x), size = 0.5) +
+  labs(x = 'Oxidative stress path (P2)',
+       y = 'Expression Level') +
+  facet_wrap(~Gene, nrow = 6, ncol = 3,
+             scales = 'free')
 
 #Fig. 2E - Retnla####
 genes <- c('Retnla','Ear2')
@@ -712,39 +765,38 @@ f2e[[2]] <- f2e[[2]] +
           axis.text.x = element_text(size = 8)) +
   NoLegend()
 
-t <- FetchData(object = c0,
-               vars = c('Path_1',genes),
-               slot = 'scale.data')
-t <- t[!is.na(t[,1]),]
-t <- t[order(t[,1],decreasing = F),] #only counts for regulated genes
-t <- melt(t, id.vars = 'Path_1')
-colnames(t) <- c('X','Gene','Y')
 
-f2e[[3]] <- ggplot(data = t, aes(x = X, y = Y,
-                                 color = Gene,
-                                 fill = Gene))+
-  theme(axis.text = element_blank(),
-        axis.title = element_text(size =8),
-        axis.line = element_line(),
-        axis.ticks = element_blank(),
-        legend.key = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank(),
-        legend.position = 'none') +
-  geom_smooth(method = gam::gam, se = F,
-              formula = y ~ lo(x), size = 0.5) +
-  labs(x = titles['Path_1'],
-       y = 'Expression Level') +
-  annotate('text', color = color_hue(2)[1], size = 2,
-           label = paste0('Retnla p.val: ',
-                          format(pval$Path_1[['Retnla']],digits = 3)),
-           x = 10, y = 2) +
-  annotate('text', color = color_hue(2)[2], size = 2,
-           label = paste0('Ear2 p.val: ',
-                          format(pval$Path_1[['Ear2']],digits = 3)),
-           x = 4, y = Inf) +
-  coord_cartesian(clip = 'off')
+for(i in genes){
+  t <- FetchData(object = c0,
+                 vars = c(names(tg),i),
+                 slot = 'scale.data')
+  t <- t[!is.na(t[,1]),]
+  t <- t[order(t[,1],decreasing = F),] #only counts for regulated genes
+  t <- melt(t, id.vars = i)
+  colnames(t) <- c('Y','Path','X')
+
+  f2e[[i]] <- ggplot(data = t, aes(x = X, y = Y,
+                                   color = Path)) +
+    scale_color_manual(values = col.paths) +
+    theme(axis.text = element_blank(),
+          strip.background = element_blank(),
+          strip.placement = 'inside',
+          strip.text = element_blank(),
+          legend.position = 'none',
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(size = 8,
+                                      face = 'italic'),
+          axis.line = element_line(),
+          axis.ticks = element_blank(),
+          legend.key = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank()) +
+    geom_smooth(method = gam::gam, se = F,
+                formula = y ~ lo(x), size = 0.5) +
+    labs(y = paste(i)) +
+    facet_wrap(~Path, nrow = 1, ncol = 4, scales = 'free_x')
+}
 
 #Fig. 2G - Quantification Retnla####
 df <-data.frame('2' = c(4.58,11.07,16.5,1.52,
