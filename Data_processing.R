@@ -553,3 +553,11 @@ d <- IntegrateData(anchorset = anchors,
                    new.assay.name = 'integrated',
                    normalization.method = "SCT",
                    dims = 1:50)
+
+#Batch correct with Hamony
+d <- d %>%
+  RunHarmony(group.by.vars = 'tissue',
+             assay.use = 'SCT', reduction = "pca") %>%
+  RunUMAP(reduction = "harmony", dims = 1:20,
+          reduction.name = 'harmony.umap',
+          assay = 'SCT', reduction.key = 'hUMAP_')
