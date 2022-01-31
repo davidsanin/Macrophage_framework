@@ -78,6 +78,7 @@ node_master #annotated network nodes
 g_old #network
 l_old #network layout
 fc.umap #flow cytometry based UMAP
+flow #Multidimension flow validating results
 datasets <- c(c1,c2,c3,c4,c5,c6,c7,c8,c9)
 
 # ===================== Color scheme and factors ===================== ####
@@ -238,13 +239,27 @@ fs1b <- lapply(fs1b,
                })
 
 #Fig. S1C - heatmap####
+#Fig. S1C - DotPlot####
 top20 <- markers %>% group_by(cluster) %>% top_n(15, avg_logFC)
 
-fs1c <- DoHeatmap(object = c0, features = top20$gene,
-                  angle = 0, size = 2) +
-  NoLegend() +
-  scale_fill_gradientn(colors = c("darkblue", "white", "darkorange")) +
-  theme(axis.text = element_text(face='italic', color = 'black', size = 6))
+fs1c <- DotPlot(object = c0, dot.scale = 2,
+                features = unique(top20$gene), cols = c("darkblue","darkorange")) + 
+  guides(color = guide_colorbar(ticks = F, title = NULL,
+                                direction = 'horizontal', 
+                                barwidth = unit(10, 'mm'),
+                                barheight = unit(2, 'mm')),
+         size = guide_legend(ncol = 2, title = NULL, 
+                             keywidth = unit(2, 'mm'),
+                             keyheight = unit(2, 'mm'))) +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_text(size = 6,
+                                   angle = 90, 
+                                   hjust = 1, vjust = 0.5),
+        axis.text.y = element_text(size = 6, face = 'italic'),
+        legend.text = element_text(size = 6),
+        panel.grid = element_line(color = 'black', size = 0.05, 
+                                  linetype = 'dotted')) + 
+  coord_flip()
 
 #Fig. 1C Scores and cluster annotation####
 #Fig. 1C Scores and cluster annotation####
@@ -599,8 +614,7 @@ for(i in names(tg)){
 
 #Fig. 2C - Well-known gene expression####
 f2c <- list()
-genes <- c('Il4ra','Clec10a','Mrc1',
-           'Il1b','H2-Ab1','Il6',
+genes <- c('Mrc1','Il1b',
            'Hif1a','mt-Co1')
 for(i in genes){
   t <- FetchData(object = c0,
@@ -649,7 +663,7 @@ fs2b[[1]] <- fs2b[[1]] +
   coord_flip() +
   NoLegend()
 
-fs2b[2:9] <- lapply(fs2b[2:9], function(x){
+fs2b[2:4] <- lapply(fs2b[2:4], function(x){
   x +
     theme(axis.title =element_blank(),
           plot.title = element_text(size = 10,
@@ -660,89 +674,7 @@ fs2b[2:9] <- lapply(fs2b[2:9], function(x){
     coord_flip() +
     NoLegend()})
 
-#Fig. 2D - Apoptosis####
-t <- FetchData(object = c0,
-               vars = c(names(tg),'Apoptosis1'),
-               slot = 'scale.data')
-
-f2d <- list()
-
-f2d[[1]] <- ggplot()+
-  theme(axis.text = element_blank(),
-        axis.title = element_text(size = 8),
-        axis.line = element_line(),
-        axis.ticks = element_blank(),
-        legend.key = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank()) +
-  geom_smooth(method = gam::gam, se = F,
-              formula = y ~ lo(x), size = 0.5,
-              data = t[!is.na(t[,1]),] %>% arrange(Path_1),
-              aes(x = Path_1, y = Apoptosis1), color = "#FF7F00") +
-  geom_smooth(method = gam::gam, se = F,
-              formula = y ~ lo(x),  size = 0.5,
-              data = t[!is.na(t[,2]),] %>% arrange(Path_2),
-              aes(x = Path_2, y = Apoptosis1), color = "#E31A1C") +
-  geom_smooth(method = gam::gam, se = F,
-              formula = y ~ lo(x),  size = 0.5,
-              data = t[!is.na(t[,3]),] %>% arrange(Path_3),
-              aes(x = Path_3, y = Apoptosis1), color = "#CAB2D6") +
-  geom_smooth(method = gam::gam, se = F,
-              formula = y ~ lo(x),  size = 0.5,
-              data = t[!is.na(t[,4]),] %>% arrange(Path_4),
-              aes(x = Path_4, y = Apoptosis1), color = "#6A3D9A") +
-  labs(x = 'Paths',
-       y = 'Apoptosis score')
-
-genes <- c('Acin1','Acvr1c','Aifm1','Aifm3','Akt1',
-           'Ano6','Apaf1','Bax','Bbc3','Bcl2l1',
-           'Bcl10','Blcap','Bok','Casp3','Casp7',
-           'Casp8','Casp14','Casp16','Cd24a','Cdk5rap3',
-           'Cdkn2a','Cecr2','Cidea','Cideb','Cidec','Cxcr3',
-           'Dedd2','Dffa','Dffb','Dicer1','Dlc1','Dnase1l3',
-           'Dnase2a','Dnase2b','Endog','Ern2','Exog','Fap',
-           'Foxl2','Fzd3','Gcg','Gm20594','Gper1','Hsf1','Igfbp3','Il6',
-           'Madd','Nmnat1','Pak2','Pam16','Plscr1',
-           'Plscr2','Ptgis','Rffl','Rnf34','Rps3','Sharpin','Sirt2',
-           'Stk24','Taok1','Tnf','Top2a','Trp53','Trp53bp2','Trpc5',
-           'Xkr4','Xkr5','Xkr6','Xkr7','Xkr8','Xkr9','Zc3h12a')
-
-genes <- genes[genes %in% rownames(c0)]
-genes <- genes[genes %in% names(pval$Path_2)][c(3,5,6,8,11,12)]
-cells <- rownames(c0@meta.data[!is.na(c0$Path_2),])
-t <- FetchData(object = c0, cells = cells, vars = c('Path_2',genes))
-t <- t[order(t[,1],decreasing = F),] #only counts for regulated genes
-t <- melt(t, id.vars = 'Path_2')
-colnames(t) <- c('X','Gene','Y')
-
-f2d[[2]] <- ggplot(data = t, aes(x = X, y = Y,
-                            group = Gene)) +
-  theme(axis.text = element_blank(),
-        strip.background = element_blank(),
-        strip.placement = 'inside',
-        strip.text = element_text(size = 8,
-                                  face = 'italic'),
-        legend.position = 'none',
-        axis.title.x = element_text(size = 8,
-                                    face = 'plain'),
-        axis.title.y = element_text(size = 8,
-                                    face = 'plain'),
-        axis.line = element_line(),
-        axis.ticks = element_blank(),
-        legend.key = element_blank(),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.background = element_blank()) +
-  geom_smooth(method = gam::gam, se = F,
-              color = col.paths[[2]],
-              formula = y ~ lo(x), size = 0.5) +
-  labs(x = 'Oxidative stress path (P2)',
-       y = 'Expression Level') +
-  facet_wrap(~Gene, nrow = 6, ncol = 3,
-             scales = 'free')
-
-#Fig. 2E - Retnla####
+#Fig. 2D - Retnla####
 genes <- c('Retnla','Ear2')
 
 f2e <- VlnPlot(c0, features = genes, cols = colors,
@@ -798,7 +730,7 @@ for(i in genes){
     facet_wrap(~Path, nrow = 1, ncol = 4, scales = 'free_x')
 }
 
-#Fig. 2G - Quantification Retnla####
+#Fig. 2E - Quantification Retnla####
 df <-data.frame('2' = c(4.58,11.07,16.5,1.52,
                         4.89,1.73,6.74,11.8,
                         4.37,7.9),
@@ -845,7 +777,7 @@ f2g <- ggplot(data = df, aes(x = day,
            x = 3, y = Inf) +
   coord_cartesian(clip = 'off')
 
-#Fig. 2h####
+#Fig. 2G Monocyte transfer####
 df1 <- data.frame('Host' = c(4.740,
                              4.980,
                              9.990,
@@ -854,22 +786,18 @@ df1 <- data.frame('Host' = c(4.740,
                                     2.13,
                                     4.81,
                                     3.77))
-df2 <- data.frame('Host' = c(10.530,
-                             20.520,
-                             17.780,
-                             19.330,
-                             4.960,
-                             3.970,
-                             2.500,
-                             5.180),
-                  'Transferred_WT' = c(33.8500,
-                                       57.7200,
-                                       15.0400,
-                                       38.4600,
-                                       NA,NA,NA,NA),
-                  'Transferred_KO' = c(40.500000,
-                                       31.760000,
-                                       24.230000,
+df2 <- data.frame('Host' = c(10.53,20.52,17.78,19.33,
+                             4.96,3.97,2.50,5.18,
+                             1.25,2.52,3.16,3.09,
+                             5.10,2.62,2.07,2.65,
+                             4.9,1.7),
+                  'Transferred_WT' = c(33.85,57.72,15.04,38.46,
+                                       23.7,46,29,44.4,
+                                       52.7,NA,NA,NA,
+                                       NA,NA,NA,NA,NA,NA),
+                  'Transferred_KO' = c(40.5,31.76,24.23,39.8,
+                                       42.0,36.1,32.1,23.8,
+                                       NA,NA,NA,NA,NA,
                                        NA,NA,NA,NA,NA))
 df1 <- melt(df1)
 df2 <- melt(df2)
@@ -882,12 +810,12 @@ res2 <- aov(percentage ~ condition, data = df2)
 summary(res2)
 TukeyHSD(res2)
 
-f2h1 <- ggplot(data = df1, aes(x = condition,
-                             y = percentage,
-                             fill = condition)) +
-  geom_jitter(size = 2, height = 0, width = 0.1,
-              pch =21, color = 'black') +
-  xlab('Peritoneal macrophages\n(Day 4 post-adoptive transfer)') +
+f2h1 <- ggplot(data = df1, aes(x = condition, 
+                              y = percentage, 
+                              fill = condition)) +
+  geom_jitter(size = 2, height = 0, width = 0.1, 
+              pch =21, color = 'black') + 
+  xlab('Peritoneal macrophages\n(Day 4 post-adoptive transfer)') + 
   ylab(expression(paste(TIM4^'+',' RELM',alpha^'+',' (%)'))) +
   scale_fill_manual(values = c('#e2d810','#322e2f')) +
   scale_y_continuous(limits = c(0,80)) +
@@ -904,16 +832,16 @@ f2h1 <- ggplot(data = df1, aes(x = condition,
         axis.ticks.x = element_blank(),
         axis.title = element_text(colour="black", size = 8)) +
   annotate('text',
-           label = 'ns',
+           label = 'ns', 
            x = 2, y = Inf) +
   coord_cartesian(clip = 'off')
 
-f2h2 <- ggplot(data = df2, aes(x = condition,
-                              y = percentage,
+f2h2 <- ggplot(data = df2, aes(x = condition, 
+                              y = percentage, 
                               fill = condition)) +
-  geom_jitter(size = 2, height = 0, width = 0.1,
-              pch =21, color = 'black') +
-  xlab('Monocytes\n(Day 4 post-adoptive transfer)') +
+  geom_jitter(size = 2, height = 0, width = 0.1, 
+              pch =21, color = 'black') + 
+  xlab('Monocytes\n(Day 4 post-adoptive transfer)') + 
   ylab(expression(paste(TIM4^'-',' RELM',alpha^'+',' (%)'))) +
   scale_fill_manual(values = c('#e2d810','#d9138a','#12a4d9')) +
   scale_y_continuous(limits = c(0,80)) +
@@ -930,16 +858,114 @@ f2h2 <- ggplot(data = df2, aes(x = condition,
         axis.ticks.x = element_blank(),
         axis.title = element_text(colour="black", size = 8))  +
   annotate('text',
-           label = '**',
+           label = '****', 
            x = 2, y = 65) +
   annotate('text',
-           label = '*',
+           label = '****', 
            x = 3, y = 65) +
-  coord_cartesian(clip = 'off') +
+  coord_cartesian(clip = 'off') + 
   geom_linerange(xmin=2,xmax=3,y =70)+
   annotate('text',
-           label = 'ns',
+           label = 'ns', 
            x = 2.5, y = 75)
+
+#Fig. 2H RELMa deficient####
+df1 <- data.frame('WT' = c(7.79,5.36,3.62,5.93,3.53),
+                  'KO' = c(3.21,4.33,3.09,2.9,0.028))
+df2 <- data.frame('WT' = c(101270,131320,56110,124530,56480),
+                  'KO' = c(81855,77940,24720,21750,308))
+df3 <- data.frame('WT' = c(45.3,39.6,43.3,64.4,26.5),
+                  'KO' = c(18.9,29.4,15.9,12.9,7.32))
+t.test(x = df1$WT, y = df1$KO, alternative = "two.sided")
+t.test(x = df2$WT, y = df2$KO, alternative = "two.sided")
+t.test(x = df3$WT, y = df3$KO, alternative = "two.sided")
+df1 <- melt(df1)
+df2 <- melt(df2)
+df3 <- melt(df3)
+colnames(df1) <- c('x','y')
+colnames(df2) <- c('x','y')
+colnames(df3) <- c('x','y')
+
+f2i1 <- ggplot(data = df1, aes(x = x, 
+                              y = y, 
+                              fill = x)) +
+  geom_jitter(size = 2, height = 0, width = 0.1, 
+              pch =21, color = 'black') + 
+  xlab('Monocytes\n(Day 8 post-adoptive transfer)') + 
+  ylab('Transferred cells (%)') +
+  scale_fill_manual(values = c('#0d1137','#e52165')) +
+  scale_y_continuous(limits = c(0,10)) +
+  theme(axis.line = element_line(size=0.5, colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        plot.title = element_blank(),
+        legend.position = 'none',
+        text=element_text(family="Arial"),
+        axis.text.y = element_text(colour="black", size = 8),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title = element_text(colour="black", size = 8))  +
+  annotate('text',
+           label = '*', 
+           x = 1.5, y = 10) +
+  coord_cartesian(clip = 'off') + 
+  geom_linerange(xmin=1,xmax=2,y = 9)
+
+f2i2 <- ggplot(data = df2, aes(x = x, 
+                              y = y, 
+                              fill = x)) +
+  geom_jitter(size = 2, height = 0, width = 0.1, 
+              pch =21, color = 'black') + 
+  xlab('Monocytes\n(Day 8 post-adoptive transfer)') + 
+  ylab('Transferred cells') +
+  scale_fill_manual(values = c('#0d1137','#e52165')) +
+  scale_y_continuous(limits = c(0,1.5E5)) +
+  theme(axis.line = element_line(size=0.5, colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        plot.title = element_blank(),
+        legend.position = 'none',
+        text=element_text(family="Arial"),
+        axis.text.y = element_text(colour="black", size = 8),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title = element_text(colour="black", size = 8))  +
+  annotate('text',
+           label = '0.051', 
+           x = 1.5, y = 1.5E5) +
+  coord_cartesian(clip = 'off') + 
+  geom_linerange(xmin=1,xmax=2,y = 1.4E5)
+
+f2i3 <- ggplot(data = df3, aes(x = x, 
+                              y = y, 
+                              fill = x)) +
+  geom_jitter(size = 2, height = 0, width = 0.1, 
+              pch =21, color = 'black') + 
+  xlab('Monocytes\n(Day 8 post-adoptive transfer)') + 
+  ylab(expression(paste(CD115^'+',' F4/8',0^'+',' (%)'))) +
+  scale_fill_manual(values = c('#0d1137','#e52165')) +
+  scale_y_continuous(limits = c(0,80)) +
+  theme(axis.line = element_line(size=0.5, colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        plot.title = element_blank(),
+        legend.position = 'none',
+        text=element_text(family="Arial"),
+        axis.text.y = element_text(colour="black", size = 8),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title = element_text(colour="black", size = 8))  +
+  annotate('text',
+           label = '**', 
+           x = 1.5, y = 75) +
+  coord_cartesian(clip = 'off') + 
+  geom_linerange(xmin=1,xmax=2,y = 70)
 
 # ===================== Figure 3 and S3-4 ===================== ####
 
@@ -2067,7 +2093,7 @@ f6a <- ggplot(data = m, aes(y = stage,
         legend.text = element_text(size = 6))
 
 #Fig. 6C-D New Maps####
-f6c <- DimPlot(object = c.all, reduction = "umap",
+f6c <- DimPlot(object = c.all, reduction = "harmony.umap",
                group.by = 'res_0.5',
                pt.size = 0.5, label = T, label.size = 4) +
   theme(legend.position = 'none',
@@ -2078,7 +2104,7 @@ f6c <- DimPlot(object = c.all, reduction = "umap",
 
 
 
-f6d <- DimPlot(object = c.all, reduction = "umap",
+f6d <- DimPlot(object = c.all, reduction = "harmony.umap",
                pt.size = 0.5, label = T, label.size = 4,
                group.by = 'stage', cols = colors) +
   theme(legend.position = 'none',
@@ -2087,19 +2113,68 @@ f6d <- DimPlot(object = c.all, reduction = "umap",
         axis.line = element_blank(),
         axis.title = element_blank())
 
-#Fig. 6E - Surface markers####
-m #differential gene expression results
-csg #cell surface genes
+#Fig. S6AB - Harmony Monocle??####
+library(monocle3)
+cds <- c.all
+cds[["umap"]] <- CreateDimReducObject(
+  embeddings = 
+    cds@reductions$harmony.umap@cell.embeddings, 
+  key = "UMAP_", assay = DefaultAssay(cds))
+cells <- names(Idents(cds)[Idents(cds) == 2])
+cds <- as.cell_data_set(cds)
+cds <- cluster_cells(cds = cds, reduction_method = "UMAP")
+cds <- learn_graph(cds = cds, use_partition = T, close_loop = F)
+cds <- order_cells(cds, reduction_method = "UMAP", root_cells = cells)
 
-surf <- m %>%
-  filter(gene %in% csg, p_val_adj < 0.05)
+fs6a <- plot_cells(
+  cds = cds,
+  color_cells_by = 'pseudotime',
+  label_principal_points = F,
+  label_groups_by_cluster = F,
+  label_roots = F,
+  label_cell_groups = F,
+  show_trajectory_graph = T, 
+  label_branch_points = F) + 
+  theme(legend.position = "bottom") + 
+  theme(
+    axis.line.y = element_blank(),
+    axis.text = element_blank(),
+    axis.line.x = element_blank(),
+    axis.ticks = element_blank(),
+    axis.title = element_blank(),
+    legend.key.size = unit(2,'mm')
+  ) +
+  labs(title = "Monocle")
 
-tops <- surf %>%
-  group_by(cluster) %>%
-  top_n(4, wt = avg_logFC)
+#Fig. 6E - Cluster markers####
+m #selected differential gene expression results
 
 f6e <- DotPlot(object = c.all, dot.scale = 2,
-               features = unique(tops$gene),
+               features = m, 
+               group.by = 'stage') + 
+  guides(color = guide_colorbar(ticks = F, title = NULL,
+                                direction = 'horizontal', 
+                                barwidth = unit(10, 'mm'),
+                                barheight = unit(2, 'mm')),
+         size = guide_legend(ncol = 2, title = NULL, 
+                             keywidth = unit(2, 'mm'),
+                             keyheight = unit(2, 'mm'))) +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_text(size = 6,
+                                   angle = 90, 
+                                   hjust = 1, vjust = 0.5),
+        axis.text.y = element_text(size = 6, face = 'italic'),
+        legend.text = element_text(size = 6),
+        panel.grid = element_line(color = 'black', size = 0.05, 
+                                  linetype = 'dotted')) + 
+  coord_flip()
+
+
+#Fig. 6F - Surface markers####
+csg #selected cell surface genes
+
+f6f <- DotPlot(object = c.all, dot.scale = 2,
+               features = csg,
                group.by = 'stage') +
   guides(color = guide_colorbar(ticks = F, title = NULL,
                                 direction = 'horizontal',
@@ -2117,20 +2192,152 @@ f6e <- DotPlot(object = c.all, dot.scale = 2,
         panel.grid = element_line(color = 'black', size = 0.05,
                                   linetype = 'dotted'))
 
-#Fig. 6F - Cluster markers####
-top5 <- m %>% group_by(cluster) %>% top_n(5, avg_logFC)
+#Fig. S6B - Flow Feautres####
+proteins #equivalent to csg but for proteins
 
-f6f <- DoHeatmap(object = c.all, features = top5$gene,
-                 draw.lines = T,
-                 angle = 90, size = 3, group.colors = colors) +
-  NoLegend() +
-  scale_fill_gradientn(colors = c("darkblue", "white", "darkorange")) +
-  theme(axis.text = element_text(face='italic', color = 'black', size = 6))
+fs6b <- FeaturePlot(
+  object = flow,
+  pt.size = 0.5,
+  min.cutoff = "q20",
+  max.cutoff = "q90", keep.scale = "feature",
+  features = proteins,
+  combine = FALSE)
 
-# ===================== Figure 7 and S6 ===================== ####
+fs6b <- lapply(fs6b, function(x){
+  x +
+    theme(axis.title =element_blank(),
+          plot.title = element_text(size = 10, 
+                                    face = 'plain'),
+          axis.ticks = element_blank(),
+          axis.line = element_blank(),
+          axis.text = element_blank(),
+          legend.position = "left",
+          legend.key.size = unit(2,"mm"),
+          legend.text = element_text(size = 6))
+})
 
-#Fig. S6A - Subsetting network####
-fs6a <- ggraph(g_old, layout = l_old) +
+#Fig. 6F-G - Flow Maps####
+f6f <- DimPlot(object = flow,
+               pt.size = 0.5, label = T, raster = T,
+               group.by = "stage", cols = colors[-8]) +
+  theme(legend.position = 'none',
+        axis.text = element_blank(),
+        plot.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.title = element_blank())
+
+f6g <- DimPlot(object = flow, 
+               cols = c("#1d4e89",
+                        "#7dcfb6",
+                        "#f79256",
+                        "#494848"), 
+               pt.size = 0.5, label = T, 
+               group.by = "condition") +
+  theme(legend.position = 'bottom',
+        axis.text = element_blank(),
+        plot.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.title = element_blank())
+
+#Fig. 6H dynamics####
+out <- table(flow$stage, flow$sample)
+out <- t(t(out)/colSums(out)*100)
+out <- data.frame(out)
+colnames(out) <- c('Stage','Time','Percentage')
+out$Time <- gsub("(day)([1-8]+)(.+)",'\\2',out$Time)
+out$Time <- gsub("(Naive_)([1-8]+)",'0',out$Time)
+out$Time <- factor(out$Time, levels = c("0","1","4","8"))
+
+df <- out %>% 
+  group_by(Time, Stage) %>%
+  dplyr::summarise(
+    SD = sd(Percentage),
+    Percentage = mean(Percentage)
+  )
+
+bp <- df %>%
+  group_by(Stage) %>%
+  dplyr::summarise(
+    base.percentage = max(Percentage)
+  )
+
+df2 <- out %>%
+  left_join(bp,by="Stage") %>%
+  mutate(
+    Percentage = Percentage/base.percentage
+  ) %>% 
+  group_by(Time, Stage) %>%
+  dplyr::summarise(
+    SD = sd(Percentage),
+    Percentage = mean(Percentage)
+  )
+
+df$Stage <- factor(df$Stage, levels = order)
+df2$Stage <- factor(df2$Stage, levels = order)
+
+f6h <- ggplot(data = df, aes(x = Time,
+                             y = Percentage,
+                             group = Stage,
+                             color = Stage)) + 
+  geom_line(size = 0.5) +
+  scale_color_manual(values = colors) +
+  xlab('Days from L. mono infection') + 
+  ylab('Proportion of Cells in Cluster (%)') +
+  theme(axis.line = element_line(size=0.5, colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        plot.title = element_blank(),
+        legend.position = 'none',
+        text=element_text(family="Arial"),
+        axis.text.y = element_text(colour="black", size = 8),
+        axis.text.x = element_text(colour="black", size = 8),
+        axis.title = element_text(colour="black", size = 8))
+
+f6i <- ggplot(data = df2, aes(x = Time,
+                              y = Percentage,
+                              group = Stage,
+                              color = Stage)) + 
+  geom_line(size = 0.5) +
+  scale_color_manual(values = colors) +
+  xlab('Days from L. mono infection') + 
+  ylab('Range Normalized Proportion of Cells in Cluster') +
+  theme(axis.line = element_line(size=0.5, colour = "black"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        plot.title = element_blank(),
+        legend.position = 'none',
+        text=element_text(family="Arial"),
+        axis.text.y = element_text(colour="black", size = 8),
+        axis.text.x = element_text(colour="black", size = 8),
+        axis.title = element_text(colour="black", size = 8))
+
+#Fig. 6I - Feature RELMa####
+f6j <- FeaturePlot(
+  object = flow,
+  features = "RELMa",
+  pt.size = 0.5,
+  min.cutoff = "q20",
+  max.cutoff = "q90",
+  raster = T,
+  combine = FALSE)[[1]] +
+  theme(legend.position = 'bottom',
+        axis.text = element_blank(),
+        plot.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.line = element_blank(),
+        axis.title = element_blank())  +
+  NoLegend()
+
+# ===================== Figure 7 and S7 ===================== ####
+
+#Fig. S7A - Subsetting network####
+fs7a <- ggraph(g_old, layout = l_old) +
   geom_edge_link(aes(alpha = weight)) +
   geom_node_point(size = 0.5, color = 'black',
                   stroke = 0, shape = 16) +
@@ -2140,7 +2347,7 @@ fs6a <- ggraph(g_old, layout = l_old) +
         panel.background = element_blank())
 
 tb <- data.frame(E(g_old)$weight)
-fs6b <- ggplot(tb,
+fs7b <- ggplot(tb,
                aes(x = E.g_old..weight)) +
   geom_density() +
   theme_classic() +
@@ -2167,7 +2374,7 @@ l <- layout_with_fr(graph = g, dim = 2,
 lc <- cluster_louvain(g)
 V(g)$cluster <- membership(lc)
 
-#Fig. S6C GO of clusters####
+#Fig. S7C GO of clusters####
 vc <- as_data_frame(g, what = 'vertices')
 net <- list()
 for(i in unique(vc$cluster)){
@@ -2229,10 +2436,10 @@ go2 <- list(c(1:3),
             c(1,4,26),
             c(1,2,37))
 
-fs6c <- list()
+fs7c <- list()
 leg <- list()
 for(i in 1:length(goResults)){
-  fs6c[[i]] <- goResults[[i]][go2[[i]],] %>%
+  fs7c[[i]] <- goResults[[i]][go2[[i]],] %>%
     mutate(pval = -log(over_represented_pvalue+1e-320)) %>%
     dplyr::arrange(pval) %>%
     ggplot(aes(x=pval,
@@ -2262,8 +2469,8 @@ for(i in 1:length(goResults)){
                                    linetype = 'solid'),
           legend.key.size = unit(3, 'mm'),
           legend.key = element_blank())
-  leg[[i]] <- cowplot::get_legend(fs6c[[i]])
-  fs6c[[i]] <- fs6b[[i]]+theme(legend.position = 'none')
+  leg[[i]] <- cowplot::get_legend(fs7c[[i]])
+  fs7c[[i]] <- fs7c[[i]]+theme(legend.position = 'none')
 }
 
 #Fig. 7A - Network####
